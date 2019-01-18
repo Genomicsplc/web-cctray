@@ -48,6 +48,15 @@
 		return map;
 	}
 
+	function contains(arr, element) {
+		for (let i = 0; i < arr.length; i++) {
+       			if (arr[i] === element) {
+            			return true;
+        		}
+    		}
+    		return false;
+	}
+	
 	function loadRemoteURL(url, access, mime, callback){
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function(){
@@ -109,8 +118,23 @@
 						xitem[name] = {"activity":"Sleeping","lastBuildStatus":"Unknown","webUrl":"","lastBuildLabel":"-","lastBuildTime":"-"};
 					}
 				}
-				if ((xitem[name].activity != "url") && (((activity != 'all') && (xitem[name].activity != activity)) || ((status != 'all') && (xitem[name].lastBuildStatus != status)))) {
-					continue;
+				if (xitem[name].activity != "url") {
+					if (dashboard.hasOwnProperty("activity")) {
+						if (!contains(dashboard.activity, xitem[name].activity)) {
+							continue;
+						}
+					}
+					if (dashboard.hasOwnProperty("status")) {
+						if (!contains(dashboard.status, xitem[name].lastBuildStatus)) {
+							continue;
+						}
+					}
+					if ((activity != 'all') && (xitem[name].activity != activity)) {
+						continue;
+					}
+					if ((status != 'all') && (xitem[name].lastBuildStatus != status)) {
+						continue;
+					}
 				}
 				pipeline.push(name);
 			}
