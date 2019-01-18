@@ -92,7 +92,7 @@ deps:
 	mkdir -p ./vendor
 	wget --directory-prefix=./vendor/ https://github.com/htacg/tidy-html5/releases/download/5.4.0/tidy-5.4.0-64bit.deb
 	dpkg-deb -x ./vendor/tidy-5.4.0-64bit.deb ./vendor/
-	npm install --prefix ./vendor/ uglify-js
+	npm install --prefix ./vendor/ uglify-es
 	npm install --prefix ./vendor/ csso-cli
 
 # Clean the target directory
