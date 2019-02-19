@@ -29,7 +29,7 @@
 	  var status = urlquery['s'] === undefined ? 'all' : urlquery['s'];
 
 	  // "x" can be used to remove the specified substring from the pipeline name
-	  var stripname = urlquery['x'] === undefined ? '' : urlquery['x'];
+	  var stripnames = urlquery['x'] === undefined ? '' : urlquery['x'];
 
     // "o" can be used to only show "pipelines", "stages", or "jobs"
     const only = urlquery['o'] === undefined ? 'pipelines,stages,jobs' : urlquery['o'];
@@ -185,20 +185,22 @@
                 // split name into pipeline, stage, and job components
                 const psj = name.split("::").map(function(s){return s.trim()})
                 const pipeline = psj[0];
-                const stage = psj.slice(0,2).join("::");
-                const job = psj.join("::");
-
                 if (!(pipeline in pipelines)) {
                     pipelines[pipeline] = name;
                 }
-                if (!(stage in stages)) {
-                    stages[stage] = name;
+                if (psj.length > 1) {
+                    const stage = psj.slice(0,2).join("::");
+                    if (!(stage in stages)) {
+                        stages[stage] = name;
+                    }
                 }
-                if (!(job in jobs)) {
-                    jobs[job] = name;
-                }
-			      }
-
+                if (psj.length > 2) {
+                    const job = psj.join("::");
+                    if (!(job in jobs)) {
+                        jobs[job] = name;
+                    }
+			          }
+            }
             var boxes = [];
             if (show.pipelines) {
                 for (pipeline in pipelines) {
@@ -267,7 +269,10 @@
 				        }
 				        var name = boxes[pi].displayName;
                 var box = boxes[pi];
-				        var title = name.replace(stripname, '');
+				        var title = name;
+                for (const stripname of stripnames.split(",")) {
+                    title = title.replace(stripname, '');
+                }
 				        var titleFontRatio = (getStringLengthRatio(title) / (7 * title.length));
 				        setCols++;
 				        colDiv = document.createElement('div');
