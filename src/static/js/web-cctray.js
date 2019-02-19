@@ -221,13 +221,26 @@
                     boxes.push(box);
                 }
             }
-            
+
 			      // calculate grid size
 			      var numBoxes = boxes.length;
 			      if ((numBoxes == 0) && (blank !== undefined) && (blank !== "")) {
 				        boxes.push({"displayName": "blank", "activity":"url", "webUrl": blank});
 				        numBoxes = 1;
 			      }
+            boxes.sort((a,b) => {
+                const nameA = a.displayName.toUpperCase();
+                const nameB = b.displayName.toUpperCase();
+                if (nameA == nameB) {
+                    return 0;
+                }
+                if (nameA > nameB) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+
 			      var gridRatio = dashboard.boxratio * window.innerHeight / window.innerWidth;
 			      var numCols = Math.round(Math.sqrt(numBoxes / gridRatio));
 			      var numRows = Math.ceil(numBoxes / numCols);
