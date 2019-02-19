@@ -31,6 +31,14 @@
 	  // "x" can be used to remove the specified substring from the pipeline name
 	  var stripname = urlquery['x'] === undefined ? '' : urlquery['x'];
 
+    // "o" can be used to only show "pipelines", "stages", or "jobs"
+    const only = urlquery['o'] === undefined ? 'pipelines,stages,jobs' : urlquery['o'];
+    const show = Object.create(null);
+    show.pipelines = false;
+    show.stages = false;
+    show.jobs = false;
+    only.split(",").map(function(x){show[x]=true});
+
 	  function decodeComp(s) {
 		    return decodeURIComponent(s.replace(/\+/g, ' '));
 	  };
@@ -100,17 +108,20 @@
 			      mainDiv.id = 'main';
 			      mainDiv.className = 'main';
             
-			      // select pipelines to display
-			      var pipeline = [];
-            
+			      // select pipelines, stages, and jobs to display
+			      const pipelines = Object.create(null);
+            const stages = Object.create(null);
+            const jobs = Object.create(null);
+
 			      if (dashboard.pipeline[0] == "all") {
 				        // import all pipelines specified in cctray.xml
 				        dashboard.pipeline = Object.keys(xitem);
 			      }
 
             pipeline_loop:
-			      for (var p = 0; p < dashboard.pipeline.length; p++) {
-				        var name = dashboard.pipeline[p];
+			      for (var pi = 0; pi < dashboard.pipeline.length; pi++) {
+				        var name = dashboard.pipeline[pi];
+
 				        if (typeof xitem[name] == 'undefined') {
 					          if (name[0] == "*") {
 						            // external URL content
@@ -170,30 +181,67 @@
 						            continue pipeline_loop;
 					          }
 				        }
-				        pipeline.push(name);
+
+                // split name into pipeline, stage, and job components
+                const psj = name.split("::").map(function(s){return s.trim()})
+                const pipeline = psj[0];
+                const stage = psj.slice(0,2).join("::");
+                const job = psj.join("::");
+
+                if (!(pipeline in pipelines)) {
+                    pipelines[pipeline] = name;
+                }
+                if (!(stage in stages)) {
+                    stages[stage] = name;
+                }
+                if (!(job in jobs)) {
+                    jobs[job] = name;
+                }
 			      }
+
+            var boxes = [];
+            if (show.pipelines) {
+                for (pipeline in pipelines) {
+                    const box = xitem[pipelines[pipeline]];
+                    box.displayName = pipeline;
+                    boxes.push(box);
+                }
+            }
+            if (show.stages) {
+                for (stage in stages) {
+                    const box = xitem[stages[stage]];
+                    box.displayName = stage;
+                    boxes.push(box);
+                }
+            }
+            if (show.jobs) {
+                for (job in jobs) {
+                    const box = xitem[jobs[job]];
+                    box.displayName = job;
+                    boxes.push(box);
+                }
+            }
             
 			      // calculate grid size
-			      var numPipelines = pipeline.length;
-			      if ((numPipelines == 0) && (blank !== undefined) && (blank !== "")) {
-				        xitem['blank'] = {"activity":"url","webUrl":blank};
-				        pipeline.push('blank');
-				        numPipelines = 1;
+			      var numBoxes = boxes.length;
+			      if ((numBoxes == 0) && (blank !== undefined) && (blank !== "")) {
+				        boxes.push({"displayName": "blank", "activity":"url", "webUrl": blank});
+				        numBoxes = 1;
 			      }
 			      var gridRatio = dashboard.boxratio * window.innerHeight / window.innerWidth;
-			      var numCols = Math.round(Math.sqrt(numPipelines / gridRatio));
-			      var numRows = Math.ceil(numPipelines / numCols);
+			      var numCols = Math.round(Math.sqrt(numBoxes / gridRatio));
+			      var numRows = Math.ceil(numBoxes / numCols);
 			      var rowHeight = Math.round(window.innerHeight / numRows);
 			      var colWidth = Math.round(window.innerWidth / numCols);
             
 			      var rowDiv;
 			      var colDiv;
-			      var setCols = 0; // number of pipelines in the current row
+			      var setCols = 0; // number of boxes in the current row
 			      var r = 0;
 			      var name = '';
 			      var backgroundClass = '';
-			      for (var p = 0; p < numPipelines; p++) {
-				        if ((p % numCols) == 0) {
+			      for (var pi = 0; pi < numBoxes; pi++) {
+				        if ((pi % numCols) == 0) {
 					          if (typeof(rowDiv) === 'object') {
 						            mainDiv.appendChild(rowDiv);
 					          }
@@ -204,7 +252,8 @@
 					          rowDiv.style.height = rowHeight+'px';
 					          setCols = 0;
 				        }
-				        var name = pipeline[p];
+				        var name = boxes[pi].displayName;
+                var box = boxes[pi];
 				        var title = name.replace(stripname, '');
 				        var titleFontRatio = (getStringLengthRatio(title) / (7 * title.length));
 				        setCols++;
@@ -213,19 +262,19 @@
 				        colDiv.style.width = colWidth+'px';
 				        colDiv.style.height = rowHeight+'px';
 				        pipDiv = document.createElement('div');
-				        if (xitem[name].activity == 'url') {
+				        if (box.activity == 'url') {
 					          // external URL content
-					          pipDiv.innerHTML='<iframe class="external" src="'+xitem[name].webUrl+'"></iframe>';
+					          pipDiv.innerHTML='<iframe class="external" src="'+box.webUrl+'"></iframe>';
 				        } else {
 					          titleFontSize = Math.min((rowHeight/5), (Math.round(colWidth / (titleFontRatio * title.length))));
-					          labelFontSize = Math.min((0.8 * titleFontSize), (1 + Math.round(1.3*colWidth/(xitem[name].lastBuildLabel.length+xitem[name].lastBuildTime.length+3))));
-					          pipDiv.innerHTML = '<span id="info"><a href="'+xitem[name].webUrl+'" class="pipelineName" style="font-size:'+titleFontSize+'px;">'+title+'</a><br/><span class="label" style="font-size:'+labelFontSize+'px;"><span class="lastBuildLabel">'+xitem[name].lastBuildLabel+'</span><br/><span class="lastBuildTime">'+xitem[name].lastBuildTime+'</span></span></span>';
-					          if (xitem[name].activity == 'Building') {
-						            backgroundClass = 'background_'+xitem[name].activity;
+					          labelFontSize = Math.min((0.8 * titleFontSize), (1 + Math.round(1.3*colWidth/(box.lastBuildLabel.length+box.lastBuildTime.length+3))));
+					          pipDiv.innerHTML = '<span id="info"><a href="'+box.webUrl+'" class="pipelineName" style="font-size:'+titleFontSize+'px;">'+title+'</a><br/><span class="label" style="font-size:'+labelFontSize+'px;"><span class="lastBuildLabel">'+box.lastBuildLabel+'</span><br/><span class="lastBuildTime">'+box.lastBuildTime+'</span></span></span>';
+					          if (box.activity == 'Building') {
+						            backgroundClass = 'background_'+box.activity;
 					          } else {
-						            backgroundClass = 'background_'+xitem[name].lastBuildStatus;
+						            backgroundClass = 'background_'+box.lastBuildStatus;
 					          }
-					          pipDiv.className = 'border_'+xitem[name].lastBuildStatus+' '+backgroundClass;
+					          pipDiv.className = 'border_'+box.lastBuildStatus+' '+backgroundClass;
 					          pipDiv.style.borderWidth = (1 + Math.round(Math.min(rowHeight,colWidth)/10))+'px';
 				        }
 				        colDiv.appendChild(pipDiv);
