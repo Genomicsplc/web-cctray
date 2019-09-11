@@ -99,6 +99,29 @@
 		    return obj;
 	  }
 
+    function boxFromJobs(job_names, xitems) {
+        var box = xitems[job_names[0]]; // initialize box to the first job
+        job_names.slice(1).forEach(function(job_name) {
+            // override box if this job's lastBuildStatus is more fail-y than the existing one (i.e. prefer "Failure", "Exception", "Unknown", "Success" in that order)
+            const job_lastBuildStatus = xitems[job_name].lastBuildStatus;
+            if (job_lastBuildStatus === "Failure" ||
+                (job_lastBuildStatus === "Exception" && box.lastBuildStatus !== "Failure") ||
+                (job_lastBuildStatus === "Unknown" && box.lastBuildStatus !== "Failure" && box.lastBuildStatus !== "Exception")
+               ) {
+                box.lastBuildStatus = job_lastBuildStatus;
+            }
+            // override activity if this job's activity is more active than the existing one (i.e. prefer "Building", "Pending", "CheckingModifications", "Sleeping" in that order)
+            const job_activity = xitems[job_name].activity;
+            if (job_activity == "Building" ||
+                (job_activity == "Pending" && box.activity != "Building") ||
+                (job_activity == "CheckingModifications" && box.activity != "Building" && box.activity != "Pending")
+               ) {
+                box.activity = job_activity;
+            }
+        });
+        return box;
+    }
+
 	  function loadDashboard(config, dlist, idx, max, delay, blank) {
 		    dashboard = config.dashboard[dlist[idx]];
 		    loadRemoteURL(dashboard.url, dashboard.access, 'application/xml', function(ctx) {
@@ -212,26 +235,7 @@
             var boxes = [];
             if (show.pipelines) {
                 for (pipeline in pipelines) {
-                    const job_names = pipelines[pipeline];
-                    var box = xitem[job_names[0]]; // initialize box to the first job in the pipelines
-                    job_names.slice(1).forEach(function(job_name) {
-                        // override box if this job's lastBuildStatus is more fail-y than the existing one (i.e. prefer "Failure", "Exception", "Unknown", "Success" in that order) 
-                        const job_lastBuildStatus = xitem[job_name].lastBuildStatus;
-                        if (job_lastBuildStatus == "Failure" ||
-                            (job_lastBuildStatus == "Exception" && box.lastBuildStatus != "Failure") ||
-                            (job_lastBuildStatus == "Unknown" && box.lastBuildStatus != "Failure" && box.lastBuildStatus != "Exception")
-                           ) {
-                            box.lastBuildStatus = job_lastBuildStatus;
-                        }
-                        // override activity if this job's activity is more active than the existing one (i.e. prefer "Building", "Pending", "CheckingModifications", "Sleeping" in that order)
-                        const job_activity = xitem[job_name].activity;
-                        if (job_activity == "Building" ||
-                            (job_activity == "Pending" && box.activity != "Building") ||
-                            (job_activity == "CheckingModifications" && box.activity != "Building" && box.activity != "Pending")
-                           ) {
-                            box.activity = job_activity;
-                        }
-                    });
+                    const box = boxFromJobs(pipelines[pipeline], xitem);
                     // override displayName with name of pipeline instead of name of job
                     box.displayName = pipeline;
                     boxes.push(box);
@@ -239,26 +243,7 @@
             }
             if (show.stages) {
                 for (stage in stages) {
-                    const job_names = stages[stage];
-                    var box = xitem[job_names[0]]; // initialize box to the first job in the stages
-                    job_names.slice(1).forEach(function(job_name) {
-                        // override box if this job's lastBuildStatus is more fail-y than the existing one (i.e. prefer "Failure", "Exception", "Unknown", "Success" in that order)
-                        const job_lastBuildStatus = xitem[job_name].lastBuildStatus;
-                        if (job_lastBuildStatus == "Failure" ||
-                            (job_lastBuildStatus == "Exception" && box.lastBuildStatus != "Failure") ||
-                            (job_lastBuildStatus == "Unknown" && box.lastBuildStatus != "Failure" && box.lastBuildStatus != "Exception")
-                           ) {
-                            box.lastBuildStatus = job_lastBuildStatus;
-                        }
-                        // override activity if this job's activity is more active than the existing one (i.e. prefer "Building", "Pending", "CheckingModifications", "Sleeping" in that order)
-                        const job_activity = xitem[job_name].activity;
-                        if (job_activity == "Building" ||
-                            (job_activity == "Pending" && box.activity != "Building") ||
-                            (job_activity == "CheckingModifications" && box.activity != "Building" && box.activity != "Pending")
-                           ) {
-                            box.activity = job_activity;
-                        }
-                    });
+                    const box = boxFromJobs(stages[stage], xitem);
                     // override displayName with name of stage instead of name of job
                     box.displayName = stage;
                     boxes.push(box);
